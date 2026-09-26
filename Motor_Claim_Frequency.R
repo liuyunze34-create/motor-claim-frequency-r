@@ -78,13 +78,20 @@ relativities <- data.frame(Term = names(coef(frequency_model)),
 print(relativities)
 # Exponentiated intercept = reference annual rate; other terms = rate multipliers.
 
-# 6. Evaluate once on the held-out test set.
+# 6. Main validation: compare predicted and actual held-out claim counts.
+# A/P near 1 means the totals are close, not accurate individual predictions.
 test$PredictedClaims <- predict(frequency_model, newdata = test, type = "response")
 validation_total <- data.frame(ActualClaims = sum(test$ClaimNb),
   PredictedClaims = sum(test$PredictedClaims),
   ActualToPredicted = sum(test$ClaimNb) / sum(test$PredictedClaims))
 validation <- aggregate(cbind(ClaimNb, PredictedClaims) ~ DriverGroup, test, sum)
 validation$ActualToPredicted <- validation$ClaimNb / validation$PredictedClaims
+print(validation_total)
+print(validation)
+
+# 7. Additional checks (optional background for the main interview story).
+# Deviance measures prediction error: smaller is better on the same test set.
+# The benchmark uses one training-data annual rate for every policy.
 baseline_rate <- sum(train$ClaimNb) / sum(train$Exposure)
 baseline_predictions <- test$Exposure * baseline_rate
 poisson_family <- poisson()
@@ -93,16 +100,15 @@ glm_deviance <- sum(poisson_family$dev.resids(test$ClaimNb, test$PredictedClaims
 comparison <- data.frame(BaselineDeviance = baseline_deviance,
   GLMDeviance = glm_deviance,
   ImprovementPercent = 100 * (baseline_deviance - glm_deviance) / baseline_deviance)
+# Pearson dispersion checks extra variability beyond the Poisson assumption.
 dispersion <- sum(residuals(frequency_model, type = "pearson")^2) / df.residual(frequency_model)
-print(validation_total)
-print(validation)
 print(comparison)
 print(dispersion)
 # Dispersion > 1 suggests extra variation beyond the Poisson assumption.
 # Treat ordinary Poisson standard errors/p-values cautiously.
 # A/P near 1 is aggregate calibration, NOT individual prediction accuracy.
 
-# 7. Save small, reusable results.
+# 8. Save small, reusable results.
 write.csv(quality, "outputs/data_checks.csv", row.names = FALSE)
 write.csv(portfolio, "outputs/portfolio.csv", row.names = FALSE)
 write.csv(age_summary, "outputs/age_summary.csv", row.names = FALSE)
@@ -114,3 +120,4 @@ write.csv(data.frame(PearsonDispersion = dispersion), "outputs/dispersion.csv", 
 saveRDS(frequency_model, "outputs/frequency_model.rds")
 capture.output(sessionInfo(), file = "outputs/session_info.txt")
 cat("Finished. Results saved in:", normalizePath("outputs"), "\n")
+
