@@ -1,0 +1,13 @@
+# Downloaded data and generated results
+/data/
+/outputs/
+
+# Local R session and editor files
+.RData
+.Rhistory
+.Ruserdata
+.Rproj.user/
+
+# OS files
+.DS_Store
+Thumbs.db
